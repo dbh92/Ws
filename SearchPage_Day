@@ -1,0 +1,389 @@
+USE [Test]
+GO
+/****** Object:  StoredProcedure [dbo].[Proc_SearchPage_Day]    Script Date: 8/13/2023 8:15:37 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+-- Author: HuanDB
+ALTER procedure [dbo].[Proc_SearchPage_Day]
+@fromTime nvarchar(50),
+@endTime nvarchar(50),
+@condition nvarchar(50)
+as 
+begin
+	begin transaction	
+		declare @PLANT nvarchar(50)
+		declare @LOT_ID nvarchar(250)
+		declare @MODEL nvarchar(50)
+		declare @START_TIME nvarchar(50)
+		declare	@END_TIME nvarchar(50)
+		declare @MES_INPUT int
+		declare @YEIID nvarchar(50)
+		declare @TOTAL_INPUT_OK int
+		declare @ATTACH_TOTAL_DEFECT int
+		declare @BOTTOM_TOTAL int
+		declare @BOTTOM_SUCCESS int
+		declare @BOTTOM_ERROR_SUM int
+		declare @BOTTOM_NO_DEVICE int
+		declare @BOTTOM_BACK_SPILL int
+		declare @BOTTOM_CONTAMINATION int
+		declare @BOTTOM_SCRATCH int
+		declare @BOTTOM_PAD_COUNT int
+		declare @BOTTOM_PKG_SIZE int
+		declare @BOTTOM_LEAD_COUNT int
+		declare @SIDE_TOTAL int
+		declare @SIDE_SUCCESS int
+		declare @SIDE_ERR_SUM int
+		declare @SIDE_CONTAMINATION int
+		declare @SIDE_CHIPPING int
+		declare @SIDE_BURR int
+		declare @TOP1_MARK_TOTAL int
+		declare @TOP1_MARK_SUCCESS int
+		declare @TOP1_MARK_ERROR_SUM int
+		declare @TOP1_MARK_NO_DEVICE int
+		declare @TOP1_MARK_CONTAMINATION int
+		declare @TOP1_MARK_WRONG int
+		declare @TOP2_MARK_TOTAL int
+		declare @TOP2_MARK_SUCCESS int
+		declare @TOP2_MARK_ERROR_SUM int
+		declare @TOP2_MARK_NO_DEVICE int
+		declare @TOP2_MARK_CONTAMINATION int
+		declare @TOP2_MARK_WRONG int
+		declare @LAST_CREATE_TIME nvarchar(50)
+
+		declare @DAY nvarchar(50)
+		declare @WEEK nvarchar(50)
+		declare @MONTH nvarchar(50)
+
+		declare @tblSearchPage table(
+			V_LOT_ID nvarchar(50),
+			V_MODEL nvarchar(50),
+			V_START_TIME nvarchar(50),
+			V_END_TIME nvarchar(50),
+			V_MES_INPUT int,
+			V_YEIID nvarchar(50),
+			V_TOTAL_INPUT_OK int,
+			V_ATTACH_TOTAL_DEFECT int,
+			V_BOTTOM_TOTAL nvarchar(50),
+			V_BOTTOM_SUCCESS int,
+			V_BOTTOM_ERROR_SUM int,
+			V_BOTTOM_NO_DEVICE int,
+			V_BOTTOM_BACK_SPILL int,
+			V_BOTTOM_CONTAMINATION int,
+			V_BOTTOM_SCRATCH int,
+			V_BOTTOM_PAD_COUNT int,
+			V_BOTTOM_PKG_SIZE int,
+			V_BOTTOM_LEAD_COUNT int,
+			V_SIDE_TOTAL nvarchar(50),
+			V_SIDE_SUCCESS int,
+			V_SIDE_ERR_SUM int,
+			V_SIDE_CONTAMINATION int,
+			V_SIDE_CHIPPING int,
+			V_SIDE_BURR int,
+			V_TOP_TOTAL nvarchar(50),
+			V_TOP_SUCCESS int,
+			V_TOP_ERROR_SUM int,
+			V_TOP_NO_DEVICE int,
+			V_TOP_CONTAMINATION int,
+			V_TOP_WRONG int,
+			V_DAY nvarchar(50),
+			V_WEEK nvarchar(50),
+			V_MONTH nvarchar(50)
+		)
+
+		declare @PPM_BOTTOM_TOTAL nvarchar(50) = 'PPM'
+		declare @PPM_BOTTOM_ERROR_SUM int
+		declare @PPM_BOTTOM_NO_DEVICE int
+		declare @PPM_BOTTOM_BACK_SPILL int
+		declare @PPM_BOTTOM_CONTAMINATION int
+		declare @PPM_BOTTOM_SCRATCH int
+		declare @PPM_BOTTOM_PAD_COUNT int
+		declare @PPM_BOTTOM_PKG_SIZE int
+		declare @PPM_BOTTOM_LEAD_COUNT int
+
+		declare @PPM_SIDE_TOTAL nvarchar(50) = 'PPM'
+		declare @PPM_SIDE_ERR_SUM int
+		declare @PPM_SIDE_CONTAMINATION int
+		declare @PPM_SIDE_CHIPPING int
+		declare @PPM_SIDE_BURR int
+
+		declare @PPM_TOP_TOTAL nvarchar(50) = 'PPM'
+		declare @PPM_TOP_SUCCESS int
+		declare @PPM_TOP_ERROR_SUM int
+		declare @PPM_TOP_NO_DEVICE int
+		declare @PPM_TOP_CONTAMINATION int
+		declare @PPM_TOP_WRONG int
+		
+		--if(@rdoCheck = 'Day')
+		--	begin
+
+		--	end
+		--else if(@rdoCheck = 'Week')
+		--	begin
+				
+		--	end
+
+		if(@condition = '')
+			begin
+				declare c cursor for
+						select datepart(WEEK, START_TIME), SUM(MES_INPUT),
+						SUM(TOTAL_INPUT_OK), SUM(ATTACH_TOTAL_DEFECT), SUM(BOTTOM_TOTAL), SUM(BOTTOM_SUCCESS), SUM(BOTTOM_ERROR_SUM), SUM(BOTTOM_NO_DEVICE),
+						SUM(BOTTOM_BACK_SPILL), SUM(BOTTOM_CONTAMINATION), SUM(BOTTOM_SCRATCH), SUM(BOTTOM_PAD_COUNT), SUM(BOTTOM_PKG_SIZE), SUM(BOTTOM_LEAD_COUNT),
+						SUM(SIDE_TOTAL), SUM(SIDE_SUCCESS), SUM(SIDE_ERR_SUM), SUM(SIDE_CONTAMINATION), SUM(SIDE_CHIPPING), SUM(SIDE_BURR), SUM(TOP1_MARK_TOTAL), SUM(TOP1_MARK_SUCCESS),
+						SUM(TOP1_MARK_ERROR_SUM), SUM(TOP1_MARK_NO_DEVICE), SUM(TOP1_MARK_CONTAMINATION), SUM(TOP1_MARK_WRONG), SUM(TOP2_MARK_TOTAL), SUM(TOP2_MARK_SUCCESS),
+						SUM(TOP2_MARK_ERROR_SUM), SUM(TOP2_MARK_NO_DEVICE), SUM(TOP2_MARK_CONTAMINATION), SUM(TOP2_MARK_WRONG)
+						from EMI_LOTLOGDATA t
+						where t.START_TIME between @fromTime and @endTime
+						group by datepart(WEEK, START_TIME)
+			end
+		else
+			begin
+				declare c cursor for
+						select datepart(WEEK, START_TIME), SUM(MES_INPUT),
+						SUM(TOTAL_INPUT_OK), SUM(ATTACH_TOTAL_DEFECT), SUM(BOTTOM_TOTAL), SUM(BOTTOM_SUCCESS), SUM(BOTTOM_ERROR_SUM), SUM(BOTTOM_NO_DEVICE),
+						SUM(BOTTOM_BACK_SPILL), SUM(BOTTOM_CONTAMINATION), SUM(BOTTOM_SCRATCH), SUM(BOTTOM_PAD_COUNT), SUM(BOTTOM_PKG_SIZE), SUM(BOTTOM_LEAD_COUNT),
+						SUM(SIDE_TOTAL), SUM(SIDE_SUCCESS), SUM(SIDE_ERR_SUM), SUM(SIDE_CONTAMINATION), SUM(SIDE_CHIPPING), SUM(SIDE_BURR), SUM(TOP1_MARK_TOTAL), SUM(TOP1_MARK_SUCCESS),
+						SUM(TOP1_MARK_ERROR_SUM), SUM(TOP1_MARK_NO_DEVICE), SUM(TOP1_MARK_CONTAMINATION), SUM(TOP1_MARK_WRONG), SUM(TOP2_MARK_TOTAL), SUM(TOP2_MARK_SUCCESS),
+						SUM(TOP2_MARK_ERROR_SUM), SUM(TOP2_MARK_NO_DEVICE), SUM(TOP2_MARK_CONTAMINATION), SUM(TOP2_MARK_WRONG)
+						from EMI_LOTLOGDATA t
+						where t.START_TIME between @fromTime and @endTime
+						group by datepart(WEEK, START_TIME)
+						having datepart(WEEK, START_TIME) = @condition	
+			end
+			
+			open c
+					fetch next from c
+						into @DAY,
+							 @MES_INPUT ,
+							 @TOTAL_INPUT_OK, 
+							 @ATTACH_TOTAL_DEFECT ,
+							 @BOTTOM_TOTAL ,
+							 @BOTTOM_SUCCESS, 
+							 @BOTTOM_ERROR_SUM, 
+							 @BOTTOM_NO_DEVICE ,
+							 @BOTTOM_BACK_SPILL ,
+							 @BOTTOM_CONTAMINATION, 
+							 @BOTTOM_SCRATCH ,
+							 @BOTTOM_PAD_COUNT, 
+							 @BOTTOM_PKG_SIZE ,
+							 @BOTTOM_LEAD_COUNT, 
+							 @SIDE_TOTAL ,
+							 @SIDE_SUCCESS, 
+							 @SIDE_ERR_SUM ,
+							 @SIDE_CONTAMINATION, 
+							 @SIDE_CHIPPING ,
+							 @SIDE_BURR ,
+							 @TOP1_MARK_TOTAL, 
+							 @TOP1_MARK_SUCCESS, 
+							 @TOP1_MARK_ERROR_SUM, 
+							 @TOP1_MARK_NO_DEVICE ,
+							 @TOP1_MARK_CONTAMINATION, 
+							 @TOP1_MARK_WRONG ,
+							 @TOP2_MARK_TOTAL ,
+							 @TOP2_MARK_SUCCESS, 
+							 @TOP2_MARK_ERROR_SUM, 
+							 @TOP2_MARK_NO_DEVICE ,
+							 @TOP2_MARK_CONTAMINATION, 
+							 @TOP2_MARK_WRONG 
+			
+					while @@FETCH_STATUS = 0
+					begin
+						set @PPM_BOTTOM_ERROR_SUM = (@BOTTOM_ERROR_SUM * 1000000)/@BOTTOM_TOTAL
+						set @PPM_BOTTOM_BACK_SPILL = (@BOTTOM_BACK_SPILL * 1000000)/@BOTTOM_TOTAL
+						set @PPM_BOTTOM_CONTAMINATION = (@BOTTOM_CONTAMINATION * 1000000)/@BOTTOM_TOTAL
+						set @PPM_BOTTOM_LEAD_COUNT = (@BOTTOM_LEAD_COUNT * 1000000)/@BOTTOM_TOTAL
+						set @PPM_BOTTOM_NO_DEVICE = (@BOTTOM_NO_DEVICE * 1000000)/@BOTTOM_TOTAL
+						set @PPM_BOTTOM_PAD_COUNT = (@BOTTOM_PAD_COUNT * 1000000)/@BOTTOM_TOTAL
+						set @PPM_BOTTOM_PKG_SIZE = (@BOTTOM_PKG_SIZE * 1000000)/@BOTTOM_TOTAL
+						set @PPM_BOTTOM_SCRATCH = (@BOTTOM_SCRATCH * 1000000)/@BOTTOM_TOTAL
+
+						set @PPM_SIDE_ERR_SUM = (@SIDE_ERR_SUM * 1000000)/@SIDE_TOTAL
+						set @PPM_SIDE_CONTAMINATION = (@SIDE_CONTAMINATION * 1000000)/@SIDE_TOTAL
+						set @PPM_SIDE_CHIPPING = (@SIDE_CHIPPING * 1000000)/@SIDE_TOTAL
+						set @PPM_SIDE_BURR = (@SIDE_BURR * 1000000)/@SIDE_TOTAL
+
+						set @PPM_TOP_ERROR_SUM = ((@TOP1_MARK_ERROR_SUM + @TOP2_MARK_ERROR_SUM) * 1000000)/(@TOP1_MARK_TOTAL+@TOP2_MARK_TOTAL)
+						set @PPM_TOP_CONTAMINATION = ((@TOP1_MARK_CONTAMINATION + @TOP2_MARK_CONTAMINATION) * 1000000)/(@TOP1_MARK_TOTAL+@TOP2_MARK_TOTAL)
+						set @PPM_TOP_NO_DEVICE = ((@TOP1_MARK_NO_DEVICE + @TOP2_MARK_NO_DEVICE) * 1000000)/(@TOP1_MARK_TOTAL+@TOP2_MARK_TOTAL)
+						set @PPM_TOP_WRONG = ((@TOP1_MARK_WRONG + @TOP2_MARK_WRONG) * 1000000)/(@TOP1_MARK_TOTAL+@TOP2_MARK_TOTAL)
+
+							insert into @tblSearchPage(
+								V_DAY,
+								V_MES_INPUT ,
+								V_TOTAL_INPUT_OK ,
+								V_ATTACH_TOTAL_DEFECT ,
+								V_BOTTOM_TOTAL ,
+								V_BOTTOM_SUCCESS ,
+								V_BOTTOM_ERROR_SUM ,
+								V_BOTTOM_NO_DEVICE ,
+								V_BOTTOM_BACK_SPILL ,
+								V_BOTTOM_CONTAMINATION ,
+								V_BOTTOM_SCRATCH ,
+								V_BOTTOM_PAD_COUNT ,
+								V_BOTTOM_PKG_SIZE ,
+								V_BOTTOM_LEAD_COUNT ,
+								V_SIDE_TOTAL ,
+								V_SIDE_SUCCESS ,
+								V_SIDE_ERR_SUM ,
+								V_SIDE_CONTAMINATION ,
+								V_SIDE_CHIPPING ,
+								V_SIDE_BURR ,
+								V_TOP_TOTAL ,
+								V_TOP_SUCCESS ,
+								V_TOP_ERROR_SUM ,
+								V_TOP_NO_DEVICE ,
+								V_TOP_CONTAMINATION ,
+								V_TOP_WRONG 
+						) values ( 
+								@DAY,
+								@MES_INPUT ,
+								@TOTAL_INPUT_OK, 
+								@ATTACH_TOTAL_DEFECT ,
+								@BOTTOM_TOTAL ,
+								@BOTTOM_SUCCESS, 
+								@BOTTOM_ERROR_SUM, 
+								@BOTTOM_NO_DEVICE ,
+								@BOTTOM_BACK_SPILL ,
+								@BOTTOM_CONTAMINATION, 
+								@BOTTOM_SCRATCH ,
+								@BOTTOM_PAD_COUNT, 
+								@BOTTOM_PKG_SIZE ,
+								@BOTTOM_LEAD_COUNT, 
+								@SIDE_TOTAL ,
+								@SIDE_SUCCESS, 
+								@SIDE_ERR_SUM ,
+								@SIDE_CONTAMINATION, 
+								@SIDE_CHIPPING ,
+								@SIDE_BURR ,
+								@TOP1_MARK_TOTAL + @TOP2_MARK_TOTAL, 
+								@TOP1_MARK_SUCCESS + @TOP2_MARK_SUCCESS, 
+								@TOP1_MARK_ERROR_SUM + @TOP2_MARK_ERROR_SUM, 
+								@TOP1_MARK_NO_DEVICE + @TOP2_MARK_NO_DEVICE ,
+								@TOP1_MARK_CONTAMINATION + @TOP2_MARK_CONTAMINATION,
+								@TOP1_MARK_WRONG + @TOP2_MARK_WRONG)
+
+							--Insert Row PPM---
+							insert into @tblSearchPage(
+								V_DAY,
+								V_MES_INPUT ,
+								V_TOTAL_INPUT_OK ,
+								V_ATTACH_TOTAL_DEFECT ,
+								V_BOTTOM_TOTAL ,
+								V_BOTTOM_SUCCESS ,
+								V_BOTTOM_ERROR_SUM ,
+								V_BOTTOM_NO_DEVICE ,
+								V_BOTTOM_BACK_SPILL ,
+								V_BOTTOM_CONTAMINATION ,
+								V_BOTTOM_SCRATCH ,
+								V_BOTTOM_PAD_COUNT ,
+								V_BOTTOM_PKG_SIZE ,
+								V_BOTTOM_LEAD_COUNT ,
+								V_SIDE_TOTAL ,
+								V_SIDE_SUCCESS ,
+								V_SIDE_ERR_SUM ,
+								V_SIDE_CONTAMINATION ,
+								V_SIDE_CHIPPING ,
+								V_SIDE_BURR ,
+								V_TOP_TOTAL ,
+								V_TOP_SUCCESS ,
+								V_TOP_ERROR_SUM ,
+								V_TOP_NO_DEVICE ,
+								V_TOP_CONTAMINATION ,
+								V_TOP_WRONG 
+						) values ( 
+								@DAY,
+								@MES_INPUT ,
+								@TOTAL_INPUT_OK, 
+								@ATTACH_TOTAL_DEFECT ,
+								@PPM_BOTTOM_TOTAL ,
+								NULL, 
+								@PPM_BOTTOM_ERROR_SUM, 
+								@PPM_BOTTOM_NO_DEVICE,
+								@PPM_BOTTOM_BACK_SPILL,
+								@PPM_BOTTOM_CONTAMINATION, 
+								@PPM_BOTTOM_SCRATCH ,
+								@PPM_BOTTOM_PAD_COUNT, 
+								@PPM_BOTTOM_PKG_SIZE ,
+								@PPM_BOTTOM_LEAD_COUNT, 
+								@PPM_SIDE_TOTAL ,
+								NULL, 
+								@PPM_SIDE_ERR_SUM ,
+								@PPM_SIDE_CONTAMINATION, 
+								@PPM_SIDE_CHIPPING ,
+								@PPM_SIDE_BURR ,
+								@PPM_TOP_TOTAL, 
+								NULL, 
+								@PPM_TOP_ERROR_SUM, 
+								@PPM_TOP_NO_DEVICE,
+								@PPM_TOP_CONTAMINATION,
+								@PPM_TOP_WRONG)
+
+						fetch next from c
+								into @DAY,
+									 @MES_INPUT ,
+									 @TOTAL_INPUT_OK, 
+									 @ATTACH_TOTAL_DEFECT ,
+									 @BOTTOM_TOTAL ,
+									 @BOTTOM_SUCCESS, 
+									 @BOTTOM_ERROR_SUM, 
+									 @BOTTOM_NO_DEVICE ,
+									 @BOTTOM_BACK_SPILL ,
+									 @BOTTOM_CONTAMINATION, 
+									 @BOTTOM_SCRATCH ,
+									 @BOTTOM_PAD_COUNT, 
+									 @BOTTOM_PKG_SIZE ,
+									 @BOTTOM_LEAD_COUNT, 
+									 @SIDE_TOTAL ,
+									 @SIDE_SUCCESS, 
+									 @SIDE_ERR_SUM ,
+									 @SIDE_CONTAMINATION, 
+									 @SIDE_CHIPPING ,
+									 @SIDE_BURR ,
+									 @TOP1_MARK_TOTAL, 
+									 @TOP1_MARK_SUCCESS, 
+									 @TOP1_MARK_ERROR_SUM, 
+									 @TOP1_MARK_NO_DEVICE ,
+									 @TOP1_MARK_CONTAMINATION, 
+									 @TOP1_MARK_WRONG ,
+									 @TOP2_MARK_TOTAL ,
+									 @TOP2_MARK_SUCCESS, 
+									 @TOP2_MARK_ERROR_SUM, 
+									 @TOP2_MARK_NO_DEVICE ,
+									 @TOP2_MARK_CONTAMINATION, 
+									 @TOP2_MARK_WRONG 
+					end
+					close c
+					deallocate c	
+	commit
+		select V_DAY,
+			   V_MES_INPUT ,
+			   V_TOTAL_INPUT_OK ,
+			   V_ATTACH_TOTAL_DEFECT ,
+			   V_BOTTOM_TOTAL ,
+			   V_BOTTOM_SUCCESS ,
+			   V_BOTTOM_ERROR_SUM ,
+			   V_BOTTOM_NO_DEVICE ,
+			   V_BOTTOM_BACK_SPILL ,
+			   V_BOTTOM_CONTAMINATION ,
+			   V_BOTTOM_SCRATCH ,
+			   V_BOTTOM_PAD_COUNT ,
+			   V_BOTTOM_PKG_SIZE ,
+			   V_BOTTOM_LEAD_COUNT ,
+			   V_SIDE_TOTAL ,
+			   V_SIDE_SUCCESS ,
+			   V_SIDE_ERR_SUM ,
+			   V_SIDE_CONTAMINATION ,
+			   V_SIDE_CHIPPING ,
+			   V_SIDE_BURR ,
+			   V_TOP_TOTAL ,
+			   V_TOP_SUCCESS ,
+			   V_TOP_ERROR_SUM ,
+			   V_TOP_NO_DEVICE ,
+			   V_TOP_CONTAMINATION ,
+			   V_TOP_WRONG 
+		from @tblSearchPage
+		order by V_DAY
+end
+
+	

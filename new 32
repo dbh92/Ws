@@ -1,0 +1,146 @@
+using System;
+using System.Configuration;
+using System.Data;
+using System.Data.SqlClient;
+using System.Globalization;
+using System.IO;
+using System.Net;
+using System.Text.RegularExpressions;
+
+namespace ConsoleApp2
+{
+    class Program
+    {
+        const string connect_WHC = @"Data Source = 10.70.10.97;Initial Catalog = WLP1_PARTLEADER;User Id = sa;Password = Wisol@123;Connect Timeout=3";
+        const string connect_MES = @"Data Source = 10.70.21.233;Initial Catalog = WHNP1_RSM;User Id = whnp1mesadmin;Password = whnp1mesadmin;Connect Timeout=3";
+
+        static void Main(string[] args)
+        {
+            string hostName = Dns.GetHostName();
+            string pcIP = Dns.GetHostByName(hostName).AddressList[0].ToString();
+            //string pathLogFolder = ConfigurationManager.AppSettings["pathFolder"].ToString();
+            //string EQName = ConfigurationManager.AppSettings["equipmentName"].ToString();
+
+            if (Directory.Exists(@"D:\Huan\Seed\HISTORY\ALARM"))
+            {
+                var currentDate = DateTime.Now.Date.ToString("yyyy-MM");
+                string[] folders = System.IO.Directory.GetDirectories(@"D:\Huan\Seed\HISTORY\ALARM");
+
+                if (folders != null)
+                {
+                    foreach (string logInDate in folders)
+                    {
+                        string strDate = logInDate.Substring(logInDate.LastIndexOf("\\") + 1);
+                        string pattern = @"([2]\d{3}-(0[1-9]|1[0-2]))";
+                        Regex rgx = new Regex(pattern);
+                        bool checkDateFormat = rgx.IsMatch(strDate);
+                        bool compareDateCurrent = strDate.Equals(currentDate);
+                        if (!checkDateFormat)
+                        {
+
+                            continue;
+                        }
+                        else if (!compareDateCurrent)
+                        {
+                            continue;
+                        }
+                        string[] filePaths = Directory.GetFiles($@"{logInDate}");
+                        if (filePaths.Length > 0)
+                        {
+                            foreach (var filePath in filePaths)
+                            {
+                                DateTime lastModifyTime = File.GetLastWriteTime($@"{filePath}");
+
+                                var fileName = Path.GetFileName(filePath);
+                                var date = fileName.Substring(0, fileName.LastIndexOf('_')).Replace("_", "-");
+
+                                var sqlCheckDuplicate = $@"select 1 from Monitoring_Plating_Alarm where File_Name = '{fileName}' and CONVERT(datetime, Create_Time) >= CONVERT(datetime, '{lastModifyTime}')";
+                                DataTable tblCheck = ExcuteQuery(sqlCheckDuplicate, connect_WHC);
+                                string lastCreateTime = string.Empty;
+                                if (tblCheck.Rows.Count > 0)
+                                {
+                                    continue;
+                                }
+                                var sqlGetLineNumber = $@"select max(Line_Number) as line_number from Monitoring_Plating_Alarm where File_Name = '{fileName}'";
+                                DataTable tblLine = ExcuteQuery(sqlGetLineNumber, connect_WHC);
+
+                                int lineStart = 0;
+                                if (tblLine.Rows[0]["line_number"] != null && tblLine.Rows[0]["line_number"].ToString() != "")
+                                {
+                                    lineStart = int.Parse(tblLine.Rows[0]["line_number"].ToString()) + 1;
+                                }
+
+                                string[] rows = File.ReadAllLines(filePath);
+                                DataTable dtCsv = new DataTable();
+                                dtCsv.Columns.Add("Plating_ID", typeof(Guid));
+                                dtCsv.Columns.Add("Plating_IP", typeof(string));
+                                dtCsv.Columns.Add("Plating_Machine", typeof(string));
+                                dtCsv.Columns.Add("Plating_Date", typeof(string));
+                                dtCsv.Columns.Add("Plating_Time", typeof(string));
+                                dtCsv.Columns.Add("Plating_Module", typeof(string));
+                                dtCsv.Columns.Add("Plating_Status", typeof(string));
+                                dtCsv.Columns.Add("Plating_AlarmID", typeof(int));
+                                dtCsv.Columns.Add("Plating_Code", typeof(string));
+                                dtCsv.Columns.Add("Plating_Desciption", typeof(string));
+                                dtCsv.Columns.Add("Plating_Setime", typeof(string));
+                                dtCsv.Columns.Add("Plating_Leadtime", typeof(string));
+                                dtCsv.Columns.Add("Create_Time", typeof(string));
+                                dtCsv.Columns.Add("File_Name", typeof(string));
+                                dtCsv.Columns.Add("Line_Number", typeof(int));
+
+                                for (int i = lineStart; i < rows.Length; i++)
+                                {
+                                    string[] rowValues = rows[i].Split(',');
+
+                                    DataRow dr = dtCsv.NewRow();
+                                    for (int k = 0; k < rowValues.Length; k++)
+                                    {
+                                        dr["Plating_ID"] = Guid.NewGuid();
+                                        dr["Plating_IP"] = pcIP.ToString();
+                                        dr["Plating_Machine"] = @"PLATING #1";
+                                        dr["Plating_Date"] = date;
+                                        dr[k + 4] = rowValues[k].ToString();
+                                    }
+                                    dr["Create_Time"] = lastModifyTime.ToString("yyyy-MM-dd HH:mm:ss");
+                                    dr["File_Name"] = fileName;
+                                    dr["Line_Number"] = i;
+                                    dtCsv.Rows.Add(dr);
+                                }
+
+                                SqlConnection SQLConnection = new SqlConnection(connect_WHC);
+                                SQLConnection.Open();
+                                //Load Data from DataTable to SQL Server Table.
+                                using (SqlBulkCopy BC = new SqlBulkCopy(SQLConnection))
+                                {
+                                    BC.DestinationTableName = @"dbo.Monitoring_Plating_Alarm";
+                                    BC.WriteToServer(dtCsv);
+                                }
+                                SQLConnection.Close();
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        private static DataTable ExcuteQuery(string query, string connect)
+        {
+            DataTable vdt = new DataTable();
+            try
+            {
+                SqlConnection cnn = new SqlConnection(connect);
+                cnn.Open();
+                SqlDataAdapter sda = new SqlDataAdapter(query, cnn);
+                sda.Fill(vdt);
+                cnn.Close();
+                cnn.Dispose();
+                return vdt;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+                return null;
+            }
+        }
+    }
+}

@@ -1,0 +1,150 @@
+using DevExpress.XtraEditors;
+using DevExpress.XtraLayout;
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Data.SqlClient;
+using System.Drawing;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Windows.Forms;
+
+namespace DemoPictureBox
+{
+    public partial class Form1 : DevExpress.XtraEditors.XtraForm
+    {
+        const string connect_WHC = @"Data Source = DESKTOP-OI9PL9F\ADMIN;Initial Catalog = Test;User Id = sa;Password = 1;Connect Timeout=3";
+        //const string connect_MES = @"Data Source = 10.70.21.233;Initial Catalog = WHNP1_RSM;User Id = whnp1mesadmin;Password = whnp1mesadmin;Connect Timeout=3";
+        public Form1()
+        {
+            InitializeComponent();
+            GetGrid();
+        }
+        private void GetGrid()
+        {
+            string query = $@"select * from Files";
+            DataTable dt = ExcuteQuery(query, connect_WHC);
+
+        }
+        private static DataTable ExcuteQuery(string query, string connect)
+        {
+            DataTable vdt = new DataTable();
+            try
+            {
+                SqlConnection cnn = new SqlConnection(connect);
+                cnn.Open();
+                SqlDataAdapter sda = new SqlDataAdapter(query, cnn);
+                sda.Fill(vdt);
+                cnn.Close();
+                cnn.Dispose();
+                return vdt;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+                return null;
+            }
+        }
+        string name = "";
+        string path = "";
+        private void btn1_Click(object sender, EventArgs e)
+        {
+            OpenFileDialog openFileDialog1 = new OpenFileDialog();
+            //To where your opendialog box get starting location. My initial directory location is desktop.
+            openFileDialog1.InitialDirectory = "C://Desktop";
+            //Your opendialog box title name.
+            openFileDialog1.Title = "Select file to be upload.";
+            //which type file format you want to upload in database. just add them.
+            openFileDialog1.Filter = "Image files | *.jpg";
+            //FilterIndex property represents the index of the filter currently selected in the file dialog box.
+            //openFileDialog1.FilterIndex = 1;
+            try
+            {
+                if (openFileDialog1.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+                {
+                    if (openFileDialog1.CheckFileExists)
+                    {
+                        path = System.IO.Path.GetFullPath(openFileDialog1.FileName);
+                        name = System.IO.Path.GetFileName(openFileDialog1.FileName);
+                        textEdit2.Text = path;
+                        pictureEdit1.Image = new Bitmap(openFileDialog1.FileName);
+                        pictureEdit1.Properties.SizeMode = DevExpress.XtraEditors.Controls.PictureSizeMode.Stretch;
+                    }
+                }
+                else
+                {
+                    MessageBox.Show("Please Upload document.");
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message);
+            }
+        }
+
+        private void btn2_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                FileStream fs;
+                BinaryReader br;
+                var img = pictureEdit1.Image;
+                if (img != null)
+                {
+                    byte[] ImageData;
+                    fs = new FileStream(path, FileMode.Open, FileAccess.Read);
+                    br = new BinaryReader(fs);
+                    ImageData = br.ReadBytes((int)fs.Length);
+                    br.Close();
+                    fs.Close();
+                    string sql = $@"INSERT INTO Files(Name, FileName, FileData, Path, CreateTime) VALUES('{name}', '{name}', '{ImageData}','{path}', '{DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")}')";
+                    ExcuteQuery(sql, connect_WHC);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message, "File Already exits");
+            }
+        }
+
+        //private void btnS1_Click(object sender, EventArgs e)
+        //{
+        //    string sql = $@"SELECT * FROM [Test].[dbo].[Files]";
+        //    DataTable dt = ExcuteQuery(sql, connect_WHC);
+
+        //    var picList = new List<PictureEdit> {pic2, pic3, pic4,pic5 };
+        //    for (int i = 0; i < dt.Rows.Count; i++)
+        //    {
+        //        var data = dt.Rows[i]["Path"].ToString();
+        //        picList[i].Image = Image.FromFile(data);
+        //        picList[i].Properties.SizeMode = DevExpress.XtraEditors.Controls.PictureSizeMode.Stretch;
+        //    }
+        //}
+
+        DataTable dt = new DataTable();
+        private void btnS2_Click(object sender, EventArgs e)
+        {
+            string sql = $@"SELECT [Name] as 'ACB', [Path] as 'ABC', [FILENAME] as 'BCA'
+                            FROM [Test].[dbo].[Files]";
+            dt = ExcuteQuery(sql, connect_WHC);
+            int rows = dt.Rows.Count;
+
+            gridControl1.DataSource = dt;
+            tileView1.GridControl = gridControl1;
+        }
+        int se = 0;
+        private void tileView1_ItemCustomize(object sender, DevExpress.XtraGrid.Views.Tile.TileViewItemCustomizeEventArgs e)
+        {
+            if (se < dt.Rows.Count)
+            {
+                var sss = dt.Rows[se]["ABC"].ToString();
+                e.Item[tileViewColumn1.FieldName].Image = Image.FromFile(sss);
+                //e.Item.Elements[0].Image = Image.FromFile(sss);
+                //gridControl1.RepositoryItems[i]
+                se = se + 1;
+            }
+        }
+    }
+}

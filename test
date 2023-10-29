@@ -1,0 +1,192 @@
+using DevExpress.XtraEditors;
+using DevExpress.XtraLayout;
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Data.SqlClient;
+using System.Drawing;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Windows.Forms;
+
+namespace DemoPictureBox
+{
+    public partial class Form1 : DevExpress.XtraEditors.XtraForm
+    {
+        const string connect_WHC = @"Data Source = DESKTOP-OI9PL9F\ADMIN;Initial Catalog = Test;User Id = sa;Password = 1;Connect Timeout=3";
+        //const string connect_MES = @"Data Source = 10.70.21.233;Initial Catalog = WHNP1_RSM;User Id = whnp1mesadmin;Password = whnp1mesadmin;Connect Timeout=3";
+        public Form1()
+        {
+            InitializeComponent();
+            GetGrid();
+        }
+        private void GetGrid()
+        {
+            string query = $@"select * from Files";
+            DataTable dt = ExcuteQuery(query, connect_WHC);
+
+        }
+        private static DataTable ExcuteQuery(string query, string connect)
+        {
+            DataTable vdt = new DataTable();
+            try
+            {
+                SqlConnection cnn = new SqlConnection(connect);
+                cnn.Open();
+                SqlDataAdapter sda = new SqlDataAdapter(query, cnn);
+                sda.Fill(vdt);
+                cnn.Close();
+                cnn.Dispose();
+                return vdt;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+                return null;
+            }
+        }
+        string name = "";
+        string path = "";
+        private void btn1_Click(object sender, EventArgs e)
+        {
+            OpenFileDialog openFileDialog1 = new OpenFileDialog();
+            //To where your opendialog box get starting location. My initial directory location is desktop.
+            openFileDialog1.InitialDirectory = "C://Desktop";
+            //Your opendialog box title name.
+            openFileDialog1.Title = "Select file to be upload.";
+            //which type file format you want to upload in database. just add them.
+            openFileDialog1.Filter = "Image files | *.jpg";
+            //FilterIndex property represents the index of the filter currently selected in the file dialog box.
+            //openFileDialog1.FilterIndex = 1;
+            try
+            {
+                if (openFileDialog1.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+                {
+                    if (openFileDialog1.CheckFileExists)
+                    {
+                        path = System.IO.Path.GetFullPath(openFileDialog1.FileName);
+                        name = System.IO.Path.GetFileName(openFileDialog1.FileName);
+                        textEdit2.Text = path;
+                        pictureEdit1.Image = new Bitmap(openFileDialog1.FileName);
+                        pictureEdit1.Properties.SizeMode = DevExpress.XtraEditors.Controls.PictureSizeMode.Stretch;
+                    }
+                }
+                else
+                {
+                    MessageBox.Show("Please Upload document.");
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message);
+            }
+        }
+
+        private void btn2_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                FileStream fs;
+                BinaryReader br;
+                var img = pictureEdit1.Image;
+                if (img != null)
+                {
+                    byte[] ImageData;
+                    fs = new FileStream(path, FileMode.Open, FileAccess.Read);
+                    br = new BinaryReader(fs);
+                    ImageData = br.ReadBytes((int)fs.Length);
+                    br.Close();
+                    fs.Close();
+                    string sql = $@"INSERT INTO Files(Name, FileName, FileData, Path, CreateTime) VALUES('{name}', '{name}', '{ImageData}','{path}', '{DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")}')";
+                    ExcuteQuery(sql, connect_WHC);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message, "File Already exits");
+            }
+        }
+
+        private void btnS1_Click(object sender, EventArgs e)
+        {
+            string sql = $@"SELECT * FROM [Test].[dbo].[Files]";
+            DataTable dt = ExcuteQuery(sql, connect_WHC);
+
+            var picList = new List<PictureEdit> {pic2, pic3, pic4,pic5 };
+            for (int i = 0; i < dt.Rows.Count; i++)
+            {
+                var data = dt.Rows[i]["Path"].ToString();
+                picList[i].Image = Image.FromFile(data);
+                picList[i].Properties.SizeMode = DevExpress.XtraEditors.Controls.PictureSizeMode.Stretch;
+            }
+        }
+
+        private void btnS2_Click(object sender, EventArgs e)
+        {
+            string sql = $@"SELECT * FROM [Test].[dbo].[Files]";
+            DataTable dt = ExcuteQuery(sql, connect_WHC);
+            int rows = dt.Rows.Count;
+
+            tableLayoutPanel1.Controls.Clear();
+            //tableLayoutPanel1.Controls.Add(new TableLayoutPanel);
+            //tableLayoutPanel1.ColumnCount = 2;
+            //tableLayoutPanel1.RowCount = 2;
+
+            decimal numberRow = (decimal)rows / 3;
+            if (numberRow - ((int)numberRow) > 0)
+            {
+                numberRow = (int)numberRow + 1;
+            }
+
+            layoutControlItem7.Control.Controls.Clear();
+
+            tableLayoutPanel1.ColumnCount = 3;
+            tableLayoutPanel1.RowCount = (int)numberRow;
+
+            TableLayoutColumnStyleCollection styles =
+     tableLayoutPanel1.ColumnStyles;
+
+            foreach (ColumnStyle style in styles)
+            {
+                style.SizeType = SizeType.Percent;
+
+                // Set the column width to be a percentage
+                // of the TableLayoutPanel control's width.
+                style.Width = 50;
+            }
+            TableLayoutRowStyleCollection styleRows =
+       tableLayoutPanel1.RowStyles;
+
+            foreach (RowStyle style in styleRows)
+            {
+
+                style.SizeType = SizeType.AutoSize;
+
+                // Set the row height to be a percentage
+                // of the TableLayoutPanel control's height.
+                //style.Height = 30;
+
+            }
+
+            int r = 0;
+            for (int j = 0; j < tableLayoutPanel1.RowCount; j++)
+            {
+                for (int k = 0; k < tableLayoutPanel1.ColumnCount; k++)
+                {
+                    if (r < rows)
+                    {
+                        PictureEdit pic = new PictureEdit();
+                        pic.Dock = DockStyle.Fill;
+                        var data = dt.Rows[r]["Path"].ToString();
+                        pic.Image = Image.FromFile(data);
+                        pic.Properties.SizeMode = DevExpress.XtraEditors.Controls.PictureSizeMode.Stretch;
+                        tableLayoutPanel1.Controls.Add(pic, j, k);
+                        r++;
+                    }
+                }
+            }
+        }
+    }
+}

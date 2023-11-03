@@ -1,0 +1,140 @@
+using DevExpress.Spreadsheet;
+using DevExpress.XtraGrid;
+using DevExpress.XtraGrid.Views.Grid;
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Drawing;
+using System.Linq;
+using System.Text;
+using System.Windows.Forms;
+
+namespace SpreadSheetDemo
+{
+    public partial class Form1 : DevExpress.XtraEditors.XtraForm
+    {
+        public Form1()
+        {
+            InitializeComponent();
+        }
+        List<GridControl> grControls = new List<GridControl>();
+        private void Form1_Load(object sender, EventArgs e)
+        {
+            tableLayoutPanel1.Controls.Clear();
+
+            tableLayoutPanel1.ColumnCount = 2;
+            tableLayoutPanel1.RowCount = 2;
+
+            TableLayoutColumnStyleCollection styles =
+     tableLayoutPanel1.ColumnStyles;
+
+            foreach (ColumnStyle style in styles)
+            {
+                style.SizeType = SizeType.Percent;
+                style.Width = 50;
+            }
+            TableLayoutRowStyleCollection styleRows =
+       tableLayoutPanel1.RowStyles;
+
+            foreach (RowStyle style in styleRows)
+            {
+                style.SizeType = SizeType.AutoSize;
+                style.Height = 50;
+
+            }
+           
+            for (int j = 0; j < tableLayoutPanel1.RowCount; j++)
+            {
+                for (int k = 0; k < tableLayoutPanel1.ColumnCount; k++)
+                {
+                    UserControl1 us1 = new UserControl1(grControls);
+                    us1.Dock = DockStyle.Fill;
+                    us1.displayText = "gr" + j + k;
+                    tableLayoutPanel1.Controls.Add(us1, j, k);
+                }
+            }
+        }
+
+        private void simpleButton1_Click(object sender, EventArgs e)
+        {
+             IWorkbook workbook = spreadsheetControl1.Document;
+             Worksheet worksheet = workbook.Worksheets[0];
+            // Insert a picture from a file so that its top left corner is in the specified cell.
+            // By default the picture is named Picture 1.. Picture NN.
+            //Picture pic = worksheet.Pictures.AddPicture("D:\\Capture.png", worksheet.Cells["A1"]);
+            // Insert a picture at 70 mm from the left, 40 mm from the top, 
+            // and resize it to a width of 85 mm and a height of 25 mm, locking the aspect ratio.
+            //worksheet.Pictures.AddPicture("D:\\Capture.png", 70, 40, 85, 25, true);
+            //// Insert the picture to be removed.
+            worksheet.Pictures.AddPicture("D:\\Capture.png", 0, 20, 500, 300);
+            //// Remove the last inserted picture.
+            //// Find the shape by its name. The method returns a collection of shapes with the same name.
+            //Picture picShape = worksheet.Pictures.GetPicturesByName("Picture 3")[0];
+            //picShape.Delete();
+
+
+            // Specify picture name and draw a border.
+            //pic.Name = "Logo";
+            //pic.AlternativeText = "Spreadsheet Logo";
+            //pic.BorderWidth = 1;
+            //pic.BorderColor = DevExpress.Utils.DXColor.Black;
+            //// Move a picture.
+            //pic.Move(20, 30);
+            //// Change picture behavior so it will move and size with underlying cells. 
+            //pic.Placement = Placement.MoveAndSize;
+            //worksheet.Rows[5].Height += 10;
+            //worksheet.Columns["D"].Width += 10;
+            //// Specify rotation angle.
+            //pic.Rotation = 30;
+            //// Add a hyperlink.
+            //pic.InsertHyperlink("https://www.devexpress.com/products/net/office-file-api/", true);
+
+
+        }
+
+        private void button1_Click(object sender, EventArgs e)
+        {
+            foreach (var item in grControls)
+            {
+                Console.WriteLine(item);
+                GridView  gv = (GridView)item.MainView;
+
+                IWorkbook workbook = spreadsheetControl1.Document;
+                Worksheet worksheet = workbook.Worksheets[0];
+                // Insert a picture from a file so that its top left corner is in the specified cell.
+                // By default the picture is named Picture 1.. Picture NN.
+                //Picture pic = worksheet.Pictures.AddPicture("D:\\Capture.png", worksheet.Cells["A1"]);
+                // Insert a picture at 70 mm from the left, 40 mm from the top, 
+                // and resize it to a width of 85 mm and a height of 25 mm, locking the aspect ratio.
+                //worksheet.Pictures.AddPicture("D:\\Capture.png", 70, 40, 85, 25, true);
+                //// Insert the picture to be removed.
+                worksheet.Pictures.AddPicture("D:\\Capture.png", 0, 20, 500, 300);
+
+                worksheet.Cells["E2"].Value = gv.Columns[0].FieldName;
+                worksheet.Cells["F3"].Value = gv.Columns[1].FieldName;
+                worksheet.Cells["G3"].Value = gv.Columns[2].FieldName;
+
+                break;
+
+            }
+        }
+
+        private void simpleButton2_Click(object sender, EventArgs e)
+        {
+            IWorkbook workbook = spreadsheetControl1.Document;
+            Worksheet worksheet = workbook.Worksheets[0];
+            // Save the document file under the specified name.
+            // workbook.SaveDocument("D:\\TestDoc.xlsx", DocumentFormat.OpenXml);
+            worksheet.Print();
+            // //Export the document to PDF.
+            //workbook.ExportToPdf("D:\\TestDoc.pdf");
+
+            // Open the PDF document using the default viewer.
+            System.Diagnostics.Process.Start("D:\\TestDoc.pdf");
+
+            // Open the XLSX document using the default application.
+            System.Diagnostics.Process.Start("D:\\TestDoc.xlsx");
+        }
+    }
+}

@@ -1,0 +1,62 @@
+ private void ShowChart()
+        {
+            DataTable dt = new DataTable();
+            dt.Columns.Add("Time");
+            dt.Columns.Add("Arg_Value");
+            DataRow row = dt.NewRow();
+            row["Time"] = "2023-11-26 10:10:10";
+            row["Arg_Value"] = 10;
+            DataRow row2 = dt.NewRow();
+            row2["Time"] = "2023-11-27 10:10:10";
+            row2["Arg_Value"] = 19;
+            dt.Rows.Add(row);
+
+            DrawChart(dt);
+
+        }
+
+        private void DrawChart(DataTable dt)
+        {
+            chart.Controls.Clear();
+
+            Series line1 = new Series("Arg Value", ViewType.Spline);
+            line1.View.Color = Color.MediumVioletRed;
+
+            line1.LabelsVisibility = DevExpress.Utils.DefaultBoolean.True;
+            line1.Label.TextColor = Color.FromArgb(255, 99, 71);
+            line1.Label.TextPattern = "{V:##,#}";
+            line1.CrosshairLabelPattern = "{A}: {V:##,#}";
+
+            ((LineSeriesView)line1.View).MarkerVisibility = DevExpress.Utils.DefaultBoolean.True;
+            ((LineSeriesView)line1.View).LineMarkerOptions.Kind = MarkerKind.Circle;
+
+            for (int i = 0; i < dt.Rows.Count; i++)
+            {
+                line1.Points.Add(new SeriesPoint(dt.Rows[i]["Time"].ToString(), dt.Rows[i]["Arg_Value"].ToString()));
+            }
+            line1.ArgumentScaleType = ScaleType.Qualitative;
+
+            chart.Series.Clear();
+            chart.Series.AddRange(new Series[] { line1 });
+
+            chart.Legend.AlignmentHorizontal = LegendAlignmentHorizontal.Center;
+            chart.Legend.AlignmentVertical = LegendAlignmentVertical.BottomOutside;
+            chart.Legend.Direction = LegendDirection.LeftToRight;
+            chart.Legend.MarkerMode = LegendMarkerMode.MarkerAndCheckBox;
+
+            XYDiagram diagram = (XYDiagram)chart.Diagram;
+            diagram.AxisY.WholeRange.Auto = true;
+            diagram.AxisY.Title.Visibility = DevExpress.Utils.DefaultBoolean.True;
+            diagram.AxisY.Title.Alignment = StringAlignment.Center;
+            diagram.AxisY.Title.Text = "PPM Count";
+            diagram.AxisY.Title.Font = new Font("Tahoma", 10, FontStyle.Regular);
+            diagram.AxisY.WholeRange.AlwaysShowZeroLevel = true;
+
+            ChartTitle chartTitle1 = new ChartTitle();
+            chartTitle1.Text = "Chart XYZ";
+            chartTitle1.Font = new Font("Tahoma", 15, FontStyle.Regular);
+            chart.Titles.Clear();
+            chart.Titles.Add(chartTitle1);
+
+            chart.Dock = DockStyle.Fill;
+        }
